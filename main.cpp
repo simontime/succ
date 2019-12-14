@@ -105,7 +105,7 @@ static void handleFeatureFlag(const std::string& flag)
 	// https://twitter.com/___srv_/status/1205722571100041216
 	// https://twitter.com/Andrew_Taylor/status/1205764994526265345
 	if (std::regex_search(flag, std::regex("^-fpwe+ase$"))) {
-		Sleep((flag.length() - 7));
+		Sleep((flag.length() - 7) * 1000);
 		return;
 	}
 
