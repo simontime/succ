@@ -3,16 +3,10 @@
 #include <string>
 #include <map>
 #include <regex>
-#include <unistd.h>
+
+#include <Windows.h>
 
 using namespace std::string_literals;
-
-// this whole cursed thing would at least be a bit more elegant if we had P1275
-
-static bool gColoredOutput = isatty(STDOUT_FILENO);
-static const char* gColorBrightRed     = gColoredOutput ? "\u001b[31;1m" : "";
-static const char* gColorBrightMagenta = gColoredOutput ? "\u001b[35;1m" : "";
-static const char* gColorReset         = gColoredOutput ? "\u001b[0m"    : "";
 
 static std::map<std::string,int> gObservedFlags;
 
@@ -57,12 +51,12 @@ static void checkFilesActuallyExist(const int argc, char const * const * const a
 				fclose(fh);
 			} else {
 				hasAnyMissingFiles = true;
-				fprintf(stderr, "succ: %serror:%s no such file or directory: '%s'\n", gColorBrightRed, gColorReset, argv[i]);
+				fprintf(stderr, "succ: error: no such file or directory: '%s'\n", argv[i]);
 			}
 		}
 	}
 	if (!hasAnyFiles) {
-		fprintf(stderr, "succ: %serror:%s no input files\n", gColorBrightRed, gColorReset);
+		fputs("succ: error: no input files\n", stderr);
 		exit(1);
 	} else if (hasAnyMissingFiles) {
 		exit(1);
@@ -75,15 +69,15 @@ static void handleDuplicateFlag(const std::string& flag)
 	if (result != gObservedFlags.end()) {
 		switch (result->second) {
 			case 1: {
-				fprintf(stderr, "%swarning:%s Clearly you have very little confidence in your compiler, since you feel the need to specify the same flag twice. [%s]\n", gColorBrightMagenta, gColorReset, flag.c_str());
+				fprintf(stderr, "warning: Clearly you have very little confidence in your compiler, since you feel the need to specify the same flag twice. [%s]\n", flag.c_str());
 				break;
 			}
 			case 2: {
-				fprintf(stderr, "%swarning:%s Again?! You really have no trust at all, do you? [%s]\n", gColorBrightMagenta, gColorReset, flag.c_str());
+				fprintf(stderr, "warning: Again?! You really have no trust at all, do you? [%s]\n", flag.c_str());
 				break;
 			}
 			case 3: {
-				fprintf(stderr, "%swarning:%s Goodness me. I refuse to believe you're this mistrustful. Go check your build scripts, you've surely got a mistake somewhere. [%s]\n", gColorBrightMagenta, gColorReset, flag.c_str());
+				fprintf(stderr, "warning: Goodness me. I refuse to believe you're this mistrustful. Go check your build scripts, you've surely got a mistake somewhere. [%s]\n", flag.c_str());
 				break;
 			}
 		}
@@ -96,12 +90,12 @@ static void handleDuplicateFlag(const std::string& flag)
 static void handleWarningFlag(const std::string& flag)
 {
 	if (flag.starts_with("-Wno-") || flag == "-w") {
-		fprintf(stderr, "%swarning:%s Have confidence in your code. Do not try to disable warnings. [%s]\n", gColorBrightMagenta, gColorReset, flag.c_str());
+		fprintf(stderr, "warning: Have confidence in your code. Do not try to disable warnings. [%s]\n", flag.c_str());
 		return;
 	}
 
 	if (flag == "-Werror" || flag.starts_with("-Werror=")) {
-		fprintf(stderr, "succ: %serror:%s You asked for an error, so here, have one. [%s]\n", gColorBrightRed, gColorReset, flag.c_str());
+		fprintf(stderr, "succ: error: You asked for an error, so here, have one. [%s]\n", flag.c_str());
 		exit(1);
 	}
 }
@@ -111,12 +105,12 @@ static void handleFeatureFlag(const std::string& flag)
 	// https://twitter.com/___srv_/status/1205722571100041216
 	// https://twitter.com/Andrew_Taylor/status/1205764994526265345
 	if (std::regex_search(flag, std::regex("^-fpwe+ase$"))) {
-		usleep((flag.length() - 7) * 1000000);
+		Sleep((flag.length() - 7));
 		return;
 	}
 
 	if (flag == "-fmodules" || flag == "-fmodules-ts") {
-		fprintf(stderr, "succ: %serror:%s Don't even bother. Modules are broken and you know it. [%s]\n", gColorBrightRed, gColorReset, flag.c_str());
+		fprintf(stderr, "succ: error: Don't even bother. Modules are broken and you know it. [%s]\n", flag.c_str());
 		exit(1);
 	}
 }
@@ -127,10 +121,10 @@ static void handleStdFlag(const std::string& flag)
 
 	if (std::regex_search(version, std::regex("^(c|gnu)\\+\\+(\\d+|2a)$"))) {
 		if (version.starts_with("gnu")) {
-			fprintf(stderr, "succ: %serror:%s SUCC only supports standards-compliant code. We'll have none of those fancy GNU extensions here, thank you. [%s]\n", gColorBrightRed, gColorReset, flag.c_str());
+			fprintf(stderr, "succ: error: SUCC only supports standards-compliant code. We'll have none of those fancy GNU extensions here, thank you. [%s]\n", flag.c_str());
 			exit(1);
 		} else if (version == "c++98" || version == "c++03") {
-			fprintf(stderr, "%swarning:%s Bring yourself into the modern day, gramps. [%s]\n", gColorBrightMagenta, gColorReset, flag.c_str());
+			fprintf(stderr, "warning: Bring yourself into the modern day, gramps. [%s]\n", flag.c_str());
 			return;
 		}
 		else if (version == "c++11" || version == "c++14" || version == "c++17" || version == "c++2a") {
@@ -139,7 +133,7 @@ static void handleStdFlag(const std::string& flag)
 		}
 	}
 
-	fprintf(stderr, "succ: %serror:%s What? That's not a real version of the language. [%s]\n", gColorBrightRed, gColorReset, flag.c_str());
+	fprintf(stderr, "succ: error: What? That's not a real version of the language. [%s]\n", flag.c_str());
 	exit(1);
 }
 
@@ -175,7 +169,7 @@ static void attemptToBeFunny(const int argc, char const * const * const argv)
 
 static void giveUpAndJustSayNo()
 {
-	fprintf(stderr, "succ: %serror:%s no\n", gColorBrightRed, gColorReset);
+	fputs("succ: error: no\n", stderr);
 }
 
 int main(int argc, char const * const * const argv)
