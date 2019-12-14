@@ -27,7 +27,7 @@ _Note: Building SUCC currently requires support for C++20._
 
 ### Does it support Windows?
 [windows]: #windows
-No.
+Non't.
 
 ### Can it actually compile things?
 [wip]: #wip
